@@ -15,10 +15,10 @@ void configureRtc()
   //rtc.setTime(12, 59, 50, 0, 1, 11, 21); // 2021-11-01 12:59:50.000 (hour, minutes, seconds, hundredths, day, month, year)
 
   // Clear the RTC alarm interrupt
-  am_hal_rtc_int_clear(AM_HAL_RTC_INT_ALM);
+  rtc.clearInterrupt();
 
   // Get time before starting rolling alarm
-  //rtc.getTime();
+  rtc.getTime();
 
   // Set initial rolling alarm
   //rtc.setAlarm((rtc.hour + sleepAlarmHours) % 24, (rtc.minute + sleepAlarmMinutes) % 60, 0, 0, rtc.dayOfMonth, rtc.month);
@@ -27,14 +27,13 @@ void configureRtc()
   rtc.setAlarm(0, 0, 0, 0, 0, 0);
 
   // Set the alarm mode
-  rtc.setAlarmMode(initialAlarmMode);
+  rtc.setAlarmMode(6);
 
   // Attach alarm interrupt
   rtc.attachInterrupt();
 
   // Clear the RTC alarm interrupt
-  //rtc.clearInterrupt();
-  am_hal_rtc_int_clear(AM_HAL_RTC_INT_ALM);
+  rtc.clearInterrupt();
 }
 
 // Read the real-time clock
@@ -48,14 +47,16 @@ void readRtc()
 void setSleepAlarm()
 {
   // Clear the RTC alarm interrupt
-  //rtc.clearInterrupt();
-  am_hal_rtc_int_clear(AM_HAL_RTC_INT_ALM);
+  rtc.clearInterrupt();
 
-  // Set RTC  alarm
-  rtc.setAlarm((rtc.hour + sleepAlarmHours) % 24, (rtc.minute + sleepAlarmMinutes) % 60, 0, 0, rtc.dayOfMonth, rtc.month);
+  // Set RTC  alarm  (hund, ss, mm, hh, dd, mm)
+  rtc.setAlarm(0, 0, (rtc.minute + sleepAlarmMinutes) % 60, (rtc.hour + sleepAlarmHours) % 24, rtc.dayOfMonth, rtc.month);
 
   // Set the RTC alarm mode
-  rtc.setAlarmMode(5); // Alarm match on hundredths, seconds, minutes, hours
+  rtc.setAlarmMode(sleepAlarmMode); // Alarm match on hundredths, seconds, minutes, hours
+
+  // Clear the RTC alarm interrupt
+  rtc.clearInterrupt();
 
   // Print the next RTC alarm date and time
   Serial.print("Info: Current time "); printDateTime();
@@ -65,14 +66,17 @@ void setSleepAlarm()
 void setLoggingAlarm()
 {
   // Clear the RTC alarm interrupt
-  //rtc.clearInterrupt();
-  am_hal_rtc_int_clear(AM_HAL_RTC_INT_ALM);
+  rtc.clearInterrupt();
 
-  rtc.setAlarm((rtc.hour + loggingAlarmHours) % 24, (rtc.minute + loggingAlarmMinutes) % 60, 0, 0, rtc.dayOfMonth, rtc.month);
+  // Set RTC  alarm  (hund, ss, mm, hh, dd, mm)
+  rtc.setAlarm(0, 0, (rtc.minute + loggingAlarmMinutes) % 60, (rtc.hour + loggingAlarmHours) % 24, rtc.dayOfMonth, rtc.month);
 
   // Set the RTC alarm mode
   rtc.setAlarmMode(loggingAlarmMode); // Alarm match on hundredths, seconds,  minutes, hours
 
+  // Clear the RTC alarm interrupt
+  rtc.clearInterrupt();
+  
   // Print the next RTC alarm date and time
   //Serial.print("Info: Current time "); printDateTime();
   Serial.print("Info: Logging until "); printAlarm();

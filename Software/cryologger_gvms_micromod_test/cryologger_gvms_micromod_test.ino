@@ -1,6 +1,6 @@
 /*
     Title:    Cryologger - Glacier Velocity Measurement System (GVMS) v2.0
-    Date:     March 20, 2021
+    Date:     March 25, 2021
     Author:   Adam Garbo
 
     Components:
@@ -15,21 +15,21 @@
 // ----------------------------------------------------------------------------
 // Libraries
 // ----------------------------------------------------------------------------
-#include <Arduino.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 #include <RTC.h>
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h> // https://github.com/sparkfun/SparkFun_Ublox_Arduino_Library
 #include <SdFat.h>                                // https://github.com/greiman/SdFat
 #include <SPI.h>
 #include <WDT.h>
-#include <U8g2lib.h>                              // https://github.com/olikraus/oled
 #include <Wire.h>
 
 // -----------------------------------------------------------------------------
 // Debugging
 // -----------------------------------------------------------------------------
 #define DEBUG       true  // Output debug messages to Serial Monitor
-#define DEBUG_GNSS  true  // Output GNSS information to Serial Monitor
-#define DEBUG_OLED  false  // Output debug messages to OLED display
+#define DEBUG_GNSS  false  // Output GNSS information to Serial Monitor
+#define DEBUG_OLED  true  // Output debug messages to OLED display
 
 // ----------------------------------------------------------------------------
 // Pin definitions
@@ -41,30 +41,24 @@
 // ----------------------------------------------------------------------------
 // Object instantiations
 // ----------------------------------------------------------------------------
-APM3_RTC          rtc;
-APM3_WDT          wdt;
+Adafruit_SSD1306  display(128, 32, &Wire, -1);
 SdFs              sd;
 FsFile            logFile;
 FsFile            debugFile;
 SFE_UBLOX_GNSS    gnss;
 
-#if DEBUG_OLED
-//U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C oled(U8G2_R0, 14, 12, U8X8_PIN_NONE);
-U8X8_SSD1306_128X32_UNIVISION_HW_I2C oled(14, 12, U8X8_PIN_NONE);   // Adafruit Feather ESP8266/32u4 Boards + FeatherWing OLED
-#endif
-
 // ----------------------------------------------------------------------------
 // User defined global variable declarations
 // ----------------------------------------------------------------------------
-byte          sleepAlarmMinutes     = 0;  // Rolling minutes alarm
+byte          sleepAlarmMinutes     = 1;  // Rolling minutes alarm
 byte          sleepAlarmHours       = 0;  // Rolling hours alarm
-byte          loggingAlarmMinutes   = 0;  // Rolling minutes alarm
-byte          loggingAlarmHours     = 1;  // Rolling hours alarm
-byte          sleepAlarmMode        = 4;  // Sleep alarm mode
-byte          loggingAlarmMode      = 4;  // Logging alarm mode
-byte          initialAlarmMode      = 5;  // Initial alarm mode
-bool          sleepFlag             = false;  // Flag to indicate whether to sleep between new log files
-unsigned int  gnssTimeout           = 5;  // Timeout for GNSS signal acquisition (minutes)
+byte          loggingAlarmMinutes   = 2;  // Rolling minutes alarm
+byte          loggingAlarmHours     = 0;  // Rolling hours alarm
+byte          sleepAlarmMode        = 5;  // Sleep alarm mode
+byte          loggingAlarmMode      = 5;  // Logging alarm mode
+byte          initialAlarmMode      = 6;  // Initial alarm mode
+bool          sleepFlag             = true;  // Flag to indicate whether to sleep between new log files
+unsigned int  gnssTimeout           = 1;  // Timeout for GNSS signal acquisition (minutes)
 
 // ----------------------------------------------------------------------------
 // Global variable declarations
@@ -76,7 +70,7 @@ volatile bool wdtFlag             = false;        // Flag for watchdog timer int
 volatile int  wdtCounter          = 0;            // Counter for watchdog timer interrupts
 volatile int  wdtCounterMax       = 0;            // Counter for max watchdog timer interrupts
 bool          firstTimeFlag       = true;         // Flag to track configuration of u-blox GNSS
-bool          gnssConfigFlag      = true;        //
+bool          gnssConfigFlag      = false;        //
 bool          loggingFlag         = true;         //
 bool          resetFlag           = false;        // Flag to force system reset using watchdog timer
 bool          rtcSyncFlag         = false;        // Flag to indicate if the RTC was synced with the GNSS
@@ -142,7 +136,7 @@ void setup()
   printDateTime();      // Print RTC's current date and time
 
   // Configure devices
-  //configureOled();      // Configure OLED display
+  configureOled();      // Configure OLED display
   configureWdt();       // Configure and start Watchdog Timer (WDT)
   configureGnss();      // Configure u-blox GNSS
   syncRtc();            // Acquire GNSS fix and sync RTC with GNSS
@@ -219,40 +213,23 @@ void loop()
 extern "C" void am_rtc_isr(void)
 {
   // Clear the RTC alarm interrupt
-  //rtc.clearInterrupt();
-  am_hal_rtc_int_clear(AM_HAL_RTC_INT_ALM);
+  rtc.clearInterrupt();
 
   // Set alarm flag
   alarmFlag = true;
 }
 
-// Interrupt handler for the watchdog timer
+// Interrupt handler for the watchdog.
 extern "C" void am_watchdog_isr(void)
 {
   // Clear the watchdog interrupt
   wdt.clear();
 
-  // Perform system reset after 10 watchdog interrupts (should not occur)
-  if (wdtCounter < 10)
-  {
-    wdt.restart(); // Restart the watchdog timer
-  }
-  else
-  {
-    wdt.stop(); // Stop the watchdog timer
-    peripheralPowerOff(); // Disable power to peripherals
-    qwiicPowerOff(); // Disable power to Qwiic connector
-    while (1)
-    {
-      blinkLed(2, 250);
-      blinkLed(3, 1000);
-    }
-  }
   wdtFlag = true; // Set the watchdog flag
   wdtCounter++; // Increment watchdog interrupt counter
 
-  if (wdtCounter > wdtCounterMax)
+  if (wdtCounter < 10)
   {
-    wdtCounterMax = wdtCounter;
+    wdt.restart();
   }
 }

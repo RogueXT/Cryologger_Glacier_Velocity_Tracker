@@ -1,6 +1,11 @@
 // Configure u-blox GNSS
 void configureGnss()
 {
+  //gnss.enableDebugging(); // Uncomment this line to enable lots of helpful GNSS debug messages on Serial
+
+  // Disable the "7F" check in checkUbloxI2C as RAWX data can legitimately contain 0x7F
+  gnss.disableUBX7Fcheck();
+
   // Allocate sufficient RAM to store RAWX messages (>2 KB)
   gnss.setFileBufferSize(fileBufferSize); // Must be called before gnss.begin()
 
@@ -23,8 +28,10 @@ void configureGnss()
   {
     online.gnss = true;
 #if DEBUG_OLED
-    oled.clearDisplay();
-    oled.drawString(0, 0, "Init. GNSS."); // Write something to the internal memory
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print("u-blox initialized.");
+  display.display();
 #endif
   }
 
@@ -40,17 +47,17 @@ void configureGnss()
   if (gnssConfigFlag)
   {
     /*
-    // Configure communciation interfaces
-    bool setValueSuccess = true;
-    //setValueSuccess &= gnss.newCfgValset8(UBLOX_CFG_I2C_ENABLED, 1);  // Disable I2C
-    setValueSuccess &= gnss.addCfgValset8(UBLOX_CFG_SPI_ENABLED, 0);    // Disable SPI
-    setValueSuccess &= gnss.addCfgValset8(UBLOX_CFG_UART1_ENABLED, 0);  // Disable UART1
-    setValueSuccess &= gnss.addCfgValset8(UBLOX_CFG_UART2_ENABLED, 0);  // Disable UART2
-    setValueSuccess &= gnss.sendCfgValset8(UBLOX_CFG_USB_ENABLED, 0);   // Disable USB
-    if (!setValueSuccess)
-    {
+      // Configure communciation interfaces
+      bool setValueSuccess = true;
+      //setValueSuccess &= gnss.newCfgValset8(UBLOX_CFG_I2C_ENABLED, 1);  // Disable I2C
+      setValueSuccess &= gnss.addCfgValset8(UBLOX_CFG_SPI_ENABLED, 0);    // Disable SPI
+      setValueSuccess &= gnss.addCfgValset8(UBLOX_CFG_UART1_ENABLED, 0);  // Disable UART1
+      setValueSuccess &= gnss.addCfgValset8(UBLOX_CFG_UART2_ENABLED, 0);  // Disable UART2
+      setValueSuccess &= gnss.sendCfgValset8(UBLOX_CFG_USB_ENABLED, 0);   // Disable USB
+      if (!setValueSuccess)
+      {
       Serial.println("Warning: Communication interfaces not configured!");
-    }
+      }
     */
     // Configure satellite signals
     bool setValueSuccess = true;
@@ -65,7 +72,7 @@ void configureGnss()
       Serial.println("Warning: Satellite signals not configured!");
     }
     gnssConfigFlag = false; // Clear flag
-    
+
     // Print current GNSS settings
     printGnssSettings();
   }
@@ -83,12 +90,16 @@ void syncRtc()
   Serial.println("Info: Acquiring GNSS fix...");
 
 #if DEBUG_OLED
-  oled.drawString(0, 1, "Get GNSS fix...");
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print("Acquiring GNSS fix...");
+  display.display();
 #endif
 
   // Attempt to acquire a valid GNSS position fix for up to 5 minutes
   while (!rtcSyncFlag && millis() - loopStartTime < gnssTimeout * 60UL * 1000UL)
   {
+
     petDog(); // Reset watchdog timer
     gnss.checkUblox(); // Check for arrival of new data and process it
     gnss.checkCallbacks(); // Check if callbacks are waiting to be processed
@@ -97,8 +108,10 @@ void syncRtc()
   {
     Serial.println("Warning: Unable to sync RTC!");
 #if DEBUG_OLED
-    oled.clearDisplay();
-    oled.drawString(0, 1, "RTC sync fail");
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print("RTC sync failed.");
+  display.display();
 #endif
   }
 
@@ -135,7 +148,7 @@ void processNavPvt(UBX_NAV_PVT_data_t ubx)
   if (dateValidFlag && timeValidFlag)
   {
     // Set RTC date and time
-    rtc.setTime(ubx.hour, ubx.min, ubx.sec, ubx.iTOW % 1000,
+    rtc.setTime(ubx.iTOW % 1000, ubx.sec, ubx.min, ubx.hour,
                 ubx.day, ubx.month, ubx.year - 2000);
 
     rtcSyncFlag = true; // Set flag
@@ -147,8 +160,10 @@ void processNavPvt(UBX_NAV_PVT_data_t ubx)
             rtc.hour, rtc.minute, rtc.seconds, rtc.hundredths);
 
 #if DEBUG_OLED
-    oled.drawString(0, 1, "Info: RTC time synced to:");
-    oled.drawString(0, 2, dateTimeBuffer);
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.print("RTC synced.");
+    display.display();
     delay(500);
 #endif
   }
@@ -240,14 +255,21 @@ void logGnss()
       }
 
       // Print number of bytes written to SD card
-      Serial.print(bytesWritten); Serial.print(" bytes written. ");
+      //Serial.print(bytesWritten); Serial.print(" bytes written. ");
 
       // Get max file buffer size
       maxBufferBytes = gnss.getMaxFileBufferAvail();
 
-      Serial.print("Max file buffer: "); Serial.println(maxBufferBytes);
+      //Serial.print("Max file buffer: "); Serial.println(maxBufferBytes);
 #if DEBUG_OLED
-      printBuffer();
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.println("Logging UBX data...:  ");
+    display.print("Bytes:  ");
+    display.println(bytesWritten);
+    display.print("Buffer: ");
+    display.println(maxBufferBytes);
+    display.display();
 #endif
       // Warn if fileBufferSize was more than 80% full
       if (maxBufferBytes > ((fileBufferSize / 5) * 4))

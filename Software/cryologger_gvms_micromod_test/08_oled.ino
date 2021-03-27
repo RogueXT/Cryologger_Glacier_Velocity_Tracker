@@ -1,22 +1,22 @@
-#if DEBUG_OLED
+// Configure SSD1306 OLED
 void configureOled()
 {
-  if (!oled.begin())
+#if DEBUG_OLED
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
   {
-    Serial.println("Warning: OLED failed to initialize!");
+    Serial.println("Warning: SSD1306 allocation failed!");
   }
 
-  oled.setFont(u8x8_font_amstrad_cpc_extended_f);
-  oled.drawString(0, 0, "Init. OLED."); // Write something to the internal memory
-  delay(500);
-}
+  // Show initial display buffer contents on the screen
+  display.display();
+  delay(2000);
 
+  display.clearDisplay(); // Clear the buffer
 
-void printBuffer()
-{
-  oled.setCursor(0, 0);
-  oled.print(bytesWritten);
-  oled.setCursor(0, 1);
-  oled.print(maxBufferBytes);
-}
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.print("OLED initalized.");
+  display.display(); // actually display all of the above
 #endif
+}

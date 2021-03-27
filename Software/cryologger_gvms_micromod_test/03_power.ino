@@ -1,13 +1,12 @@
 // Enter deep sleep
 void goToSleep()
 {
-
 #if DEBUG
-  Serial.end();         // Close Serial port
+  Serial.end();           // Close Serial port
 #endif
-  Wire.end();           // Disable I2C
-  SPI.end();            // Disable SPI
-  power_adc_disable();  // Disable ADC
+  Wire.end();             // Disable I2C
+  SPI.end();              // Disable SPI
+  powerControlADC(false); // Disable ADC
 
   digitalWrite(LED_BUILTIN, LOW); // Turn off LED
 
@@ -46,9 +45,9 @@ void goToSleep()
   online.logGnss = false;
   online.logDebug = false;
 
-  // Power down flash, SRAM, cache
+  // Power down cache, flash, and SRAM 
   am_hal_pwrctrl_memory_deepsleep_powerdown(AM_HAL_PWRCTRL_MEM_ALL); // Power down all memory during deep sleep
-  am_hal_pwrctrl_memory_deepsleep_retain(AM_HAL_PWRCTRL_MEM_SRAM_64K_DTCM); // Retain first 64K of SRAM
+  am_hal_pwrctrl_memory_deepsleep_retain(AM_HAL_PWRCTRL_MEM_SRAM_384K); // Retain all 384K of SRAM
 
   // Keep the 32kHz clock running for RTC
   am_hal_stimer_config(AM_HAL_STIMER_CFG_CLEAR | AM_HAL_STIMER_CFG_FREEZE);
@@ -58,7 +57,7 @@ void goToSleep()
   am_hal_sysctrl_sleep(AM_HAL_SYSCTRL_SLEEP_DEEP);
 
   /*
-     Processor sleeps and awaits RTC or WDT ISR
+     Processor sleeps and awaits RTC or WDT ISR...
   */
 
   // Wake up
@@ -73,13 +72,11 @@ void wakeUp()
   am_hal_stimer_config(AM_HAL_STIMER_HFRC_3MHZ);
 
   // Reenable UART0
-  //am_hal_gpio_pinconfig(48, g_AM_BSP_GPIO_COM_UART_TX);
-  //am_hal_gpio_pinconfig(49, g_AM_BSP_GPIO_COM_UART_RX);
-  //am_hal_pwrctrl_periph_enable(AM_HAL_PWRCTRL_PERIPH_UART0);
+  am_hal_gpio_pinconfig(48, g_AM_BSP_GPIO_COM_UART_TX);
+  am_hal_gpio_pinconfig(49, g_AM_BSP_GPIO_COM_UART_RX);
+  am_hal_pwrctrl_periph_enable(AM_HAL_PWRCTRL_PERIPH_UART0);
 
-  //initializeADC();  // Enable ADC
-
-  ap3_adc_setup();        // Enable ADC
+  initializeADC();        // Enable ADC
   Wire.begin();           // Enable I2C
   Wire.setClock(400000);  // Set I2C clock speed to 400 kHz
   SPI.begin();            // Enable SPI

@@ -20,7 +20,6 @@ void createDebugFile()
                     "timer_microsd,timer_logGnss,timer_logDebug,bytesWritten,maxBufferBytes,"
                     "wdtCounterMax, debugCounter");
 
-
   // Sync the debug file
   if (!debugFile.sync())
   {

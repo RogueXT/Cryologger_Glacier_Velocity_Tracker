@@ -5,7 +5,8 @@ void configureSd()
   unsigned long loopStartTime = millis();
 
   // Initialize microSD
-  if (!sd.begin(SdSpiConfig(PIN_SD_CS, DEDICATED_SPI)))
+  //if (!sd.begin(SdSpiConfig(PIN_SD_CS, DEDICATED_SPI)))
+  if (!sd.begin(PIN_SD_CS, SD_SCK_MHZ(4)))
   {
     Serial.println("Warning: microSD initialization failed.");
     online.microSd = false;
@@ -23,8 +24,10 @@ void configureSd()
   {
     online.microSd = true;
 #if DEBUG_OLED
-    oled.drawString(0, 0, "Init. microSD."); // Write something to the internal memory
-    delay(500);
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.print("microSD initalized.");
+    display.display();
 #endif
   }
   // Stop the loop timer
